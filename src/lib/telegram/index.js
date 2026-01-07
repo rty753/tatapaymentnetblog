@@ -181,7 +181,7 @@ export async function getAllChannelPosts(Astro, { maxPages = 100 } = {}) {
   let pageCount = 0
   let lastOldestId = null
 
-  console.info('[getAllChannelPosts] Starting to fetch all posts...')
+  console.info('[getAllChannelPosts] 开始获取所有帖子...')
 
   while (pageCount < maxPages) {
     try {
@@ -192,22 +192,22 @@ export async function getAllChannelPosts(Astro, { maxPages = 100 } = {}) {
       }
 
       const posts = result.posts ?? []
-      console.info(`[getAllChannelPosts] Page ${pageCount + 1}: Got ${posts.length} posts, before=${before}`)
+      // 使用原始最老帖子 ID（过滤前的）进行分页
+      const oldestPostId = result.oldestRawPostId
 
-      if (posts.length === 0) {
-        console.info('[getAllChannelPosts] No more posts, stopping')
+      console.info(`[getAllChannelPosts] 第 ${pageCount + 1} 页: 获取 ${posts.length} 条帖子, before=${before}, oldestRawId=${oldestPostId}`)
+
+      // 如果没有帖子了，停止
+      if (!oldestPostId) {
+        console.info('[getAllChannelPosts] 没有更多帖子了')
         break
       }
 
       allPosts = [...allPosts, ...posts]
 
-      // Get the oldest post ID for next page
-      const oldestPostId = posts[posts.length - 1]?.id
-      console.info(`[getAllChannelPosts] Oldest post ID in this batch: ${oldestPostId}`)
-
-      // Check if we've reached the end or stuck in a loop
-      if (!oldestPostId || oldestPostId === lastOldestId) {
-        console.info('[getAllChannelPosts] Reached end or stuck, stopping')
+      // 检查是否到达终点或卡住
+      if (oldestPostId === lastOldestId || Number(oldestPostId) <= 1) {
+        console.info(`[getAllChannelPosts] 到达终点 (oldestId=${oldestPostId})`)
         break
       }
 
@@ -215,23 +215,23 @@ export async function getAllChannelPosts(Astro, { maxPages = 100 } = {}) {
       before = oldestPostId
       pageCount++
 
-      // Small delay to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 200))
+      // 小延迟避免限流
+      await new Promise(resolve => setTimeout(resolve, 300))
     } catch (error) {
-      console.error('[getAllChannelPosts] Error fetching page:', error)
+      console.error('[getAllChannelPosts] 获取页面出错:', error)
       break
     }
   }
 
-  // Sort posts by ID descending (newest first)
+  // 按 ID 降序排序（最新的在前）
   allPosts.sort((a, b) => Number(b.id) - Number(a.id))
 
-  // Remove duplicates
+  // 去重
   const uniquePosts = allPosts.filter((post, index, self) =>
     index === self.findIndex(p => p.id === post.id)
   )
 
-  console.info(`[getAllChannelPosts] Total unique posts: ${uniquePosts.length}`)
+  console.info(`[getAllChannelPosts] 总共获取 ${uniquePosts.length} 条唯一帖子`)
 
   return {
     ...channelInfo,
@@ -280,12 +280,23 @@ export async function getChannelInfo(Astro, { before = '', after = '', q = '', t
     cache.set(cacheKey, post)
     return post
   }
-  const posts = $('.tgme_channel_history  .tgme_widget_message_wrap')?.map((index, item) => {
+
+  // 获取所有帖子（包括可能被过滤的）
+  const allRawPosts = $('.tgme_channel_history .tgme_widget_message_wrap')?.map((index, item) => {
     return getPost($, item, { channel, staticProxy, index })
-  })?.get()?.reverse().filter(post => ['text'].includes(post.type) && post.id && post.content)
+  })?.get()?.reverse() || []
+
+  // 获取最老帖子的 ID（用于分页，在过滤前获取）
+  const oldestRawPostId = allRawPosts[allRawPosts.length - 1]?.id
+
+  // 过滤帖子用于显示
+  const posts = allRawPosts.filter(post => ['text'].includes(post.type) && post.id && post.content)
+
+  console.info(`[getChannelInfo] Raw posts: ${allRawPosts.length}, Filtered: ${posts.length}, Oldest ID: ${oldestRawPostId}`)
 
   const channelInfo = {
     posts,
+    oldestRawPostId,  // 添加原始最老帖子 ID
     title: $('.tgme_channel_info_header_title')?.text(),
     description: $('.tgme_channel_info_description')?.text(),
     descriptionHTML: modifyHTMLContent($, $('.tgme_channel_info_description'))?.html(),
