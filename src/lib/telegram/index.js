@@ -174,37 +174,53 @@ function getPost($, item, { channel, staticProxy, index = 0 }) {
 const unnessaryHeaders = ['host', 'cookie', 'origin', 'referer']
 
 // Fetch all posts recursively by following the 'before' cursor
-export async function getAllChannelPosts(Astro, { maxPages = 50 } = {}) {
+export async function getAllChannelPosts(Astro, { maxPages = 100 } = {}) {
   let allPosts = []
   let channelInfo = null
   let before = ''
   let pageCount = 0
+  let lastOldestId = null
+
+  console.info('[getAllChannelPosts] Starting to fetch all posts...')
 
   while (pageCount < maxPages) {
-    const result = await getChannelInfo(Astro, { before })
+    try {
+      const result = await getChannelInfo(Astro, { before })
 
-    if (!channelInfo) {
-      channelInfo = { ...result }
-    }
+      if (!channelInfo) {
+        channelInfo = { ...result }
+      }
 
-    const posts = result.posts ?? []
-    if (posts.length === 0) {
+      const posts = result.posts ?? []
+      console.info(`[getAllChannelPosts] Page ${pageCount + 1}: Got ${posts.length} posts, before=${before}`)
+
+      if (posts.length === 0) {
+        console.info('[getAllChannelPosts] No more posts, stopping')
+        break
+      }
+
+      allPosts = [...allPosts, ...posts]
+
+      // Get the oldest post ID for next page
+      const oldestPostId = posts[posts.length - 1]?.id
+      console.info(`[getAllChannelPosts] Oldest post ID in this batch: ${oldestPostId}`)
+
+      // Check if we've reached the end or stuck in a loop
+      if (!oldestPostId || oldestPostId === lastOldestId) {
+        console.info('[getAllChannelPosts] Reached end or stuck, stopping')
+        break
+      }
+
+      lastOldestId = oldestPostId
+      before = oldestPostId
+      pageCount++
+
+      // Small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 200))
+    } catch (error) {
+      console.error('[getAllChannelPosts] Error fetching page:', error)
       break
     }
-
-    allPosts = [...allPosts, ...posts]
-
-    // Get the oldest post ID for next page
-    const oldestPostId = posts[posts.length - 1]?.id
-    if (!oldestPostId || oldestPostId <= 1) {
-      break
-    }
-
-    before = oldestPostId
-    pageCount++
-
-    // Small delay to avoid rate limiting
-    await new Promise(resolve => setTimeout(resolve, 100))
   }
 
   // Sort posts by ID descending (newest first)
@@ -214,6 +230,8 @@ export async function getAllChannelPosts(Astro, { maxPages = 50 } = {}) {
   const uniquePosts = allPosts.filter((post, index, self) =>
     index === self.findIndex(p => p.id === post.id)
   )
+
+  console.info(`[getAllChannelPosts] Total unique posts: ${uniquePosts.length}`)
 
   return {
     ...channelInfo,

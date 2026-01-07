@@ -29,12 +29,12 @@ const showPagination = totalPosts > pageSize
 
   {showPagination && (
     <div class="pagination-container" id="pagination">
-      <button class="pagination-btn" id="prev-page" disabled>Previous</button>
+      <button class="pagination-btn" id="prev-page" disabled>上一页</button>
       <div class="pagination-info">
         <span id="current-page">1</span> / <span id="total-pages">{totalPages}</span>
-        <span class="pagination-total">({totalPosts} posts)</span>
+        <span class="pagination-total">(共 {totalPosts} 条)</span>
       </div>
-      <button class="pagination-btn" id="next-page">Next</button>
+      <button class="pagination-btn" id="next-page">下一页</button>
     </div>
   )}
 

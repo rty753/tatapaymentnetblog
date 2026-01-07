@@ -811,10 +811,13 @@ li:has(input[type='checkbox']:checked:disabled)::before {
 /* START: Quick Links */
 
 .quick-links {
-  margin-top: 20px;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  z-index: 100;
 }
 
 .quick-link-item {
@@ -985,15 +988,12 @@ li:has(input[type='checkbox']:checked:disabled)::before {
   }
 
   .quick-links {
-    flex-direction: row;
-    flex-wrap: wrap;
-    margin-top: 10px;
+    bottom: 10px;
+    right: 10px;
+    flex-direction: column;
   }
 
   .quick-link-item {
-    flex: 1;
-    min-width: 120px;
-    justify-content: center;
     padding: 8px 10px;
     font-size: 12px;
   }
