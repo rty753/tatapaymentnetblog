@@ -1,10 +1,10 @@
 ---
 import List from '../components/list.astro'
-import { getChannelInfo } from '../lib/telegram'
+import { getAllChannelPosts } from '../lib/telegram'
 
-const channel = await getChannelInfo(Astro)
+const channel = await getAllChannelPosts(Astro)
 
 export const prerender = false
 ---
 
-<List channel={channel} after={false} />
+<List channel={channel} before={false} after={false} />

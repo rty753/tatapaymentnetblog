@@ -4,11 +4,14 @@ import Header from '../components/header.astro'
 import Item from '../components/item.astro'
 
 const { SITE_URL } = Astro.locals
-const { channel, before = true, after = true } = Astro.props
+const { channel, before = true, after = true, pageSize = 20 } = Astro.props
 const posts = channel.posts ?? []
 
 const beforeCursor = posts[posts.length - 1]?.id
 const afterCursor = posts[0]?.id
+const totalPosts = posts.length
+const totalPages = Math.ceil(totalPosts / pageSize)
+const showPagination = totalPosts > pageSize
 // const cursor = +Astro.params.cursor
 ---
 
@@ -16,34 +19,90 @@ const afterCursor = posts[0]?.id
   <slot name="header">
     <Header channel={channel} />
   </slot>
-  <div class="items">
-    {posts.map((post) => <Item post={post} />)}
+  <div class="items" id="posts-container">
+    {posts.map((post, index) => (
+      <div class="post-item" data-page={Math.floor(index / pageSize) + 1}>
+        <Item post={post} />
+      </div>
+    ))}
   </div>
 
-  <div class="pages-container">
-    {
-      before && beforeCursor > 1 ? (
-        <a
-          href={`${SITE_URL}before/${beforeCursor}`}
-          title="Before"
-          class="page"
-        >
-          Before
-        </a>
-      ) : (
-        <span class="page-placeholder">&nbsp;</span>
-      )
-    }
+  {showPagination && (
+    <div class="pagination-container" id="pagination">
+      <button class="pagination-btn" id="prev-page" disabled>Previous</button>
+      <div class="pagination-info">
+        <span id="current-page">1</span> / <span id="total-pages">{totalPages}</span>
+        <span class="pagination-total">({totalPosts} posts)</span>
+      </div>
+      <button class="pagination-btn" id="next-page">Next</button>
+    </div>
+  )}
 
-    <div class="pages-info"></div>
-    {
-      after && afterCursor ? (
-        <a href={`${SITE_URL}after/${afterCursor}`} title="After" class="page">
-          After
-        </a>
-      ) : (
-        <span class="page-placeholder">&nbsp;</span>
-      )
-    }
-  </div>
+  {!showPagination && (before || after) && (
+    <div class="pages-container">
+      {
+        before && beforeCursor > 1 ? (
+          <a
+            href={`${SITE_URL}before/${beforeCursor}`}
+            title="Before"
+            class="page"
+          >
+            Before
+          </a>
+        ) : (
+          <span class="page-placeholder">&nbsp;</span>
+        )
+      }
+
+      <div class="pages-info"></div>
+      {
+        after && afterCursor ? (
+          <a href={`${SITE_URL}after/${afterCursor}`} title="After" class="page">
+            After
+          </a>
+        ) : (
+          <span class="page-placeholder">&nbsp;</span>
+        )
+      }
+    </div>
+  )}
 </Layout>
+
+{showPagination && (
+  <script define:vars={{ pageSize, totalPages }}>
+    document.addEventListener('DOMContentLoaded', () => {
+      let currentPage = 1
+      const postsContainer = document.getElementById('posts-container')
+      const prevBtn = document.getElementById('prev-page')
+      const nextBtn = document.getElementById('next-page')
+      const currentPageEl = document.getElementById('current-page')
+
+      function showPage(page) {
+        const posts = postsContainer.querySelectorAll('.post-item')
+        posts.forEach(post => {
+          const postPage = parseInt(post.dataset.page)
+          post.style.display = postPage === page ? 'block' : 'none'
+        })
+
+        currentPage = page
+        currentPageEl.textContent = page
+        prevBtn.disabled = page === 1
+        nextBtn.disabled = page === totalPages
+
+        // Scroll to top of posts
+        postsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+
+      prevBtn.addEventListener('click', () => {
+        if (currentPage > 1) showPage(currentPage - 1)
+      })
+
+      nextBtn.addEventListener('click', () => {
+        if (currentPage < totalPages) showPage(currentPage + 1)
+      })
+
+      // Initialize - show first page
+      showPage(1)
+    })
+  </script>
+)}

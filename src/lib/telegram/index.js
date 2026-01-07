@@ -173,6 +173,54 @@ function getPost($, item, { channel, staticProxy, index = 0 }) {
 
 const unnessaryHeaders = ['host', 'cookie', 'origin', 'referer']
 
+// Fetch all posts recursively by following the 'before' cursor
+export async function getAllChannelPosts(Astro, { maxPages = 50 } = {}) {
+  let allPosts = []
+  let channelInfo = null
+  let before = ''
+  let pageCount = 0
+
+  while (pageCount < maxPages) {
+    const result = await getChannelInfo(Astro, { before })
+
+    if (!channelInfo) {
+      channelInfo = { ...result }
+    }
+
+    const posts = result.posts ?? []
+    if (posts.length === 0) {
+      break
+    }
+
+    allPosts = [...allPosts, ...posts]
+
+    // Get the oldest post ID for next page
+    const oldestPostId = posts[posts.length - 1]?.id
+    if (!oldestPostId || oldestPostId <= 1) {
+      break
+    }
+
+    before = oldestPostId
+    pageCount++
+
+    // Small delay to avoid rate limiting
+    await new Promise(resolve => setTimeout(resolve, 100))
+  }
+
+  // Sort posts by ID descending (newest first)
+  allPosts.sort((a, b) => Number(b.id) - Number(a.id))
+
+  // Remove duplicates
+  const uniquePosts = allPosts.filter((post, index, self) =>
+    index === self.findIndex(p => p.id === post.id)
+  )
+
+  return {
+    ...channelInfo,
+    posts: uniquePosts,
+  }
+}
+
 export async function getChannelInfo(Astro, { before = '', after = '', q = '', type = 'list', id = '' } = {}) {
   const cacheKey = JSON.stringify({ before, after, q, type, id })
   const cachedResult = cache.get(cacheKey)
