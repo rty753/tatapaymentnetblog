@@ -1,6 +1,6 @@
 import process from 'node:process'
 import { defineConfig } from 'astro/config'
-import vercel from '@astrojs/vercel/serverless'
+import vercel from '@astrojs/vercel'
 import cloudflare from '@astrojs/cloudflare'
 import netlify from '@astrojs/netlify'
 import node from '@astrojs/node'
@@ -26,7 +26,7 @@ const adapterProvider = process.env.SERVER_ADAPTER || provider
 
 // https://astro.build/config
 export default defineConfig({
-  output: 'hybrid',
+  output: 'static',
   adapter: providers[adapterProvider] || providers.node,
   integrations: [
     ...process.env.SENTRY_DSN
