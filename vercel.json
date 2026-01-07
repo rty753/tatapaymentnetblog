@@ -1,9 +1,4 @@
 {
-  "build": {
-    "env": {
-      "NODEJS_VERSION": "20"
-    }
-  },
   "rewrites": [
     { "source": "/static/:path*", "destination": "/api/static" }
   ]
